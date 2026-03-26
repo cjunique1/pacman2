@@ -7,6 +7,13 @@ from pacman import Directions, GameState
 from pacman_utils.game import Agent
 from pacman_utils import util
 
+"""
+Q-learning agent for Pacman
+
+Uses Q-learning with epsilon greedy exploration and count-based optimism.
+After training, epsilon and alpha are set to 0 so the agent acts greedily 
+on its learned Q-values.
+"""
 
 class GameStateFeatures:
     """
@@ -26,11 +33,10 @@ class GameStateFeatures:
     def __init__(self, state: GameState):
         self.pacman_pos = state.getPacmanPosition()
         self.food = state.getFood()
-        # Convert food grid to a hashable form so it can be used
-        # in dictionary keys.
+        #Convert food grid to a hashable form so it can be used in dictionary keys.
         self.food_key = tuple(sorted(state.getFood().asList()))
         self.ghosts = tuple(state.getGhostPositions())
-        # Legal actions available to Pacman (excluding STOP)
+        #Legal actions available to Pacman (excluding STOP)
         self.legal = state.getLegalPacmanActions()
         if Directions.STOP in self.legal:
             self.legal.remove(Directions.STOP)
@@ -65,15 +71,15 @@ class QLearnAgent(Agent):
         self.maxAttempts = int(maxAttempts)
         self.numTraining = int(numTraining)
         self.episodesSoFar = 0
-        # Q-table storing Q(state, action)
+        #Q-table storing Q(state, action)
         self.qValues = {}   
         # Counts of how often each (state, action) pair was taken
         self.counts = {}    
-        # Counts of how often each (state, action) pair was taken
+        #Counts of how often each (state, action) pair was taken
         self.lastState = None 
         self.lastAction = None
 
-    # Episode counter helpers
+    #Episode counter helpers
     def incrementEpisodesSoFar(self):
         self.episodesSoFar += 1
 
@@ -83,7 +89,7 @@ class QLearnAgent(Agent):
     def getNumTraining(self):
         return self.numTraining
 
-    # Parameter accessors
+    #Parameter accessors
     def setEpsilon(self, value: float):
         self.epsilon = value
 
@@ -183,11 +189,11 @@ class QLearnAgent(Agent):
         if not legal:
             return Directions.STOP
 
-        # Random exploration
+        #Random exploration
         if util.flipCoin(self.epsilon):
             return random.choice(legal)
 
-        # Score each action
+        #Score each action
         scored = []
         for a in legal:
             q = self.getQValue(stateFeatures, a)
@@ -195,9 +201,10 @@ class QLearnAgent(Agent):
             score = self.explorationFn(q, n)
             scored.append((score, a))
 
-        # Choose among best-scoring actions
+        #Choose among best-scoring actions
         best_score = max(score for score, _ in scored)
         best_actions = [action for score, action in scored if score == best_score]
+        #Break ties randomly to avoid bias towards an action
         return random.choice(best_actions)
         
     def getAction(self, state: GameState) -> Directions:
@@ -209,7 +216,7 @@ class QLearnAgent(Agent):
         if not currentFeatures.legal:
             return Directions.STOP
 
-        # Learn from previous transition
+        #Learn from previous transition
         if self.lastState is not None and self.lastAction is not None:
             reward = self.computeReward(self.lastState, state)
             self.learn(
@@ -219,12 +226,11 @@ class QLearnAgent(Agent):
                 currentFeatures,
             )
         action = self.chooseAction(currentFeatures)
-        # Update visit count
+        #Update visit count and store transition for non-STOP actions
         if action != Directions.STOP:
             self.updateCount(currentFeatures, action)
-        # Store transition information
-        self.lastState = state
-        self.lastAction = action
+            self.lastState = state
+            self.lastAction = action
         return action
 
     def final(self, state: GameState):
@@ -243,11 +249,11 @@ class QLearnAgent(Agent):
                 reward,
                 GameStateFeatures(state),
             )
-        # Reset stored transition
+        #Reset stored transition
         self.lastState = None
         self.lastAction = None
         self.incrementEpisodesSoFar()
-        # Turn off learning after training phase
+        #Turn off learning after training phase
         if self.getEpisodesSoFar() == self.getNumTraining():
             msg = 'Training Done (turning off epsilon and alpha)'
             print('%s\n%s' % (msg, '-' * len(msg)))
